@@ -1,4 +1,4 @@
-# RandomRumble
+# Randy the Random Rumble Robot
 A Random Rumble discord bot for destiny 2.
 Mini Flask webapp as interface to pair up discord info with bungie auth code and avoid CORS forgery.
 
