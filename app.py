@@ -36,20 +36,23 @@ def homepage():
                                'client_id': 30852,
                                'client_secret': conf['secret']})
     access = resp.json()
-    with open('users.json', 'w') as users_js:
+    with open('users.json', 'r') as users_js:
         try:
             users_db = json.load(users_js)
         except:
             users_db = {}
-        if uid not in users_db:
-            users_db[uid] = {}
-        users_db[uid]['token'] = access['access_token']
-        users_db[uid]['expires_at'] = time.time() + access['expires_in']
-        users_db[uid]['refresh_token'] = access['refresh_token']
-        users_db[uid]['refresh_expires_at'] = time.time() + access['refresh_expires_in']
-        users_db[uid]['member_id'] = access['membership_id']
 
+    if uid not in users_db:
+        users_db[uid] = {}
+    users_db[uid]['token'] = access['access_token']
+    users_db[uid]['expires_at'] = time.time() + access['expires_in']
+    users_db[uid]['refresh_token'] = access['refresh_token']
+    users_db[uid]['refresh_expires_at'] = time.time() + access['refresh_expires_in']
+    users_db[uid]['member_id'] = access['membership_id']
+
+    with open('users.json', 'w') as users_js:
         json.dump(users_db, users_js)
+
     return """Authorized! You are registered on Randy and can safely close this window."""
 
 def run():
