@@ -1,5 +1,6 @@
 import datetime
 import json
+import pydest
 import time
 from discord import Embed
 from discord.ext import commands
@@ -14,6 +15,7 @@ class Rumble:
         self.token_url = "https://www.bungie.net/platform/app/oauth/token/"
         self.easy_access = bot.easy_access
         self.strp_format = '%Y-%m-%dT%H:%M:%SZ'
+        self.pyd = pydest(self.config['key'])
 
 
     async def _getinfo(self, id):
@@ -107,8 +109,20 @@ class Rumble:
 
         return last_char[0]
 
-    async def _check_space(self):
-        pass
+    async def _make_space(self, uid, char_id):
+        user = await self._getinfo(uid)
+        buckets = {}
+        each = {}
+        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
+                                f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories",
+                                headers={'X-Api-Key': self.bot.config['key']}) as req:
+            resp = await req.json()
+        # for item in resp:
+        #   if bucketId in each:
+        #       continue
+        #   if bucketId in [bucket1, bucket2]:
+        #       buckets[bucket1] = bucketId
+            
 
     @commands.command()
     async def randomize(self, ctx):
