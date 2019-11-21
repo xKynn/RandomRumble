@@ -1,5 +1,7 @@
+import asyncio
 import datetime
 import json
+import sqlite3
 import pydest
 import time
 from discord import Embed
@@ -15,7 +17,17 @@ class Rumble:
         self.token_url = "https://www.bungie.net/platform/app/oauth/token/"
         self.easy_access = bot.easy_access
         self.strp_format = '%Y-%m-%dT%H:%M:%SZ'
-        self.pyd = pydest(self.config['key'])
+        self.pyd = pydest.Pydest(self.bot.config['key'])
+        conn = sqlite3.connect(self.pyd._manifest.manifest_files['en'])
+        c = conn.cursor()
+        res = c.execute("SELECT json from DestinyInventoryBucketDefinition")
+        bucket_defs = res.fetchall()
+        relevant_buckets = ['Kinetic Weapons', 'Energy Weapons', 'Power Weapons', 'Helmet', 'Gauntlets',
+                            'Chest Armor', 'Leg Armor', 'Class Armor']
+        self.buckets = {}
+        for bucket in bucket_defs:
+            if bucket['name'] in relevant_buckets:
+                self.buckets[bucket['hash']] = bucket['name']
 
 
     async def _getinfo(self, id):
@@ -111,18 +123,31 @@ class Rumble:
 
     async def _make_space(self, uid, char_id):
         user = await self._getinfo(uid)
-        buckets = {}
         each = {}
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
                                 f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories",
                                 headers={'X-Api-Key': self.bot.config['key']}) as req:
             resp = await req.json()
-        # for item in resp:
-        #   if bucketId in each:
-        #       continue
-        #   if bucketId in [bucket1, bucket2]:
-        #       buckets[bucket1] = bucketId
-            
+        for item in resp['Response']['inventory']['data']['items']:
+            if item['bucketHash'] not in self.buckets or item['bucketHash'] in each:
+                continue
+            each[item['bucketHash']] = item
+
+        for bucket in each:
+            await self._transfer_item(uid, each[bucket]['itemHash'],
+                                      each[bucket]['itemInstanceID'] if 'itemInstanceId' in each[bucket] else None,
+                                      char_id)
+            await asyncio.sleep(0.3)
+
+    async def _equip_items(self, uid, instance_ids, char_id):
+        user = await self._getinfo(uid)
+        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItems/",
+                                headers={'X-Api-Key': self.bot.config['key'],
+                                         'Authentication': f"Bearer {user['token']}"},
+                                data=json.dumps({'characterId': char_id,
+                                                 'itemIds': instance_ids,
+                                                 'membershipType': user['d2_mem_type']})) as req:
+            resp = await req.json()
 
     @commands.command()
     async def randomize(self, ctx):
@@ -130,13 +155,14 @@ class Rumble:
             return await ctx.reply("Please register first using the `register` commmand.")
 
 
+
     async def _transfer_item(self, uid, ref_id, instance_id = None, char_id = None, to_vault = None):
         user = await self._getinfo(uid)
-        data = {"itemReferenceHash": ref_id,
-                "itemId": instance_id,
-                "characterId": char_id,
-                "transferToVault": 1 if to_vault else 0,
-                "membershipType": 3}
+        data = json.dumps({"itemReferenceHash": ref_id,
+                           "itemId": instance_id,
+                           "characterId": char_id,
+                           "transferToVault": 1 if to_vault else 0,
+                           "membershipType": 3})
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/",
                                 headers={'X-Api-Key': self.bot.config['key'],
                                          'Authentication': f"Bearer {user['token']}"},
