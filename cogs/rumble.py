@@ -56,7 +56,7 @@ class Rumble:
             return
         payload = {'grant_type': 'refresh_token',
                    'refresh_token': users[id]['refresh_token'],
-                   'client_id': 30852,
+                   'client_id': self.bot.config['client_id'],
                    'client_secret': self.bot.config['secret']}
         async with self.ses.post(self.token_url,
                                  data = payload,
