@@ -1,4 +1,7 @@
 import aiohttp
+import os
+import pydest
+import sys
 import json
 
 from app import run
@@ -30,6 +33,7 @@ class Randy(commands.Bot):
 
         # Embed color
         self.user_color = 0x781D1D
+        self.pyd = pydest.Pydest(self.config['key'])
         self.fapp_proc = Process(target=run)
         self.easy_access = {}
 
@@ -53,11 +57,15 @@ class Randy(commands.Bot):
         await self.invoke(ctx)
 
     async def on_ready(self):
+        await self.pyd.update_manifest(language='en')
         for ext in self.startup_ext:
             try:
                 self.load_extension(f'cogs.{ext}')
             except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(f'Failed to load extension: {ext}\n{e}')
+                print(exc_type, fname, exc_tb.tb_lineno)
             else:
                 print(f'Loaded extension: {ext}')
 
