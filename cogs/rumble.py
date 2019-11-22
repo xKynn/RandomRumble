@@ -3,7 +3,9 @@ import datetime
 import json
 import sqlite3
 import pydest
+import random
 import time
+
 from discord import Embed
 from discord.ext import commands
 
@@ -124,6 +126,7 @@ class Rumble:
     async def _make_space(self, uid, char_id):
         user = await self._getinfo(uid)
         each = {}
+        buckets = {k: 0 for k in self.buckets.keys()}
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
                                 f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories",
                                 headers={'X-Api-Key': self.bot.config['key']}) as req:
@@ -131,9 +134,12 @@ class Rumble:
         for item in resp['Response']['inventory']['data']['items']:
             if item['bucketHash'] not in self.buckets or item['bucketHash'] in each:
                 continue
+            buckets[item['bucketHash']] = buckets[item['bucketHash']] + 1
             each[item['bucketHash']] = item
 
-        for bucket in each:
+        need_space = [hash for hash in self.buckets if self.buckets[hash] == 9]
+
+        for bucket in need_space:
             await self._transfer_item(uid, each[bucket]['itemHash'],
                                       each[bucket]['itemInstanceID'] if 'itemInstanceId' in each[bucket] else None,
                                       char_id)
@@ -141,7 +147,7 @@ class Rumble:
 
     async def _equip_items(self, uid, instance_ids, char_id):
         user = await self._getinfo(uid)
-        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItems/",
+        async with self.ses.post(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/EquipItems/",
                                 headers={'X-Api-Key': self.bot.config['key'],
                                          'Authentication': f"Bearer {user['token']}"},
                                 data=json.dumps({'characterId': char_id,
@@ -149,10 +155,38 @@ class Rumble:
                                                  'membershipType': user['d2_mem_type']})) as req:
             resp = await req.json()
 
+
     @commands.command()
     async def randomize(self, ctx):
-        if not ctx.author.id in self.easy_access:
+        user = await self._getinfo(ctx.author.id)
+        if not user:
             return await ctx.reply("Please register first using the `register` commmand.")
+
+        char = await self._get_latest_char(ctx.author.id)
+        await self._make_space(ctx.author.id, char['characterId'])
+        each = {}
+        buckets = {bucket: [] for bucket in self.buckets.keys()}
+        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
+                                f"Profile/{user['d2_mem_id']}/?components=ProfileInventories",
+                                headers={'X-Api-Key': self.bot.config['key']}) as req:
+            resp = await req.json()
+
+        for item in resp['Response']['inventory']['data']['items']:
+            if item['bucketHash'] not in self.buckets:
+                continue
+            buckets[item['bucketHash']].append(item)
+        for bucket in buckets:
+            each[bucket] = random.choice(buckets[bucket])
+
+        for bucket in each:
+            await self._transfer_item(ctx.author.id, each[bucket]['itemHash'],
+                                      each[bucket]['itemInstanceID'] if 'itemInstanceId' in each[bucket] else None,
+                                      char['characterId'])
+            await asyncio.sleep(0.3)
+
+        await self._equip_items(ctx.author.id, [each[item]['itemInstanceID'] for item in each], char['characterId'])
+
+
 
 
 
@@ -163,7 +197,7 @@ class Rumble:
                            "characterId": char_id,
                            "transferToVault": 1 if to_vault else 0,
                            "membershipType": 3})
-        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/",
+        async with self.ses.post(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/",
                                 headers={'X-Api-Key': self.bot.config['key'],
                                          'Authentication': f"Bearer {user['token']}"},
                                 data=data) as req:
