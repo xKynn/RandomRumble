@@ -177,6 +177,59 @@ class Rumble:
                                                  'membershipType': user['d2_mem_type']})) as req:
             resp = await req.json()
 
+    async def _save_loadout(self, uid, char_id):
+        user = await self._getinfo(uid)
+        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
+                                f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterEquipment",
+                                headers={'X-Api-Key': self.bot.config['key']}) as req:
+            resp = await req.json()
+        loadout = dict.fromkeys(self.buckets)
+        for item in resp['Response']['characterEquipment']['data']['items']:
+            if item['bucketHash'] in loadout_buckets:
+                loadout_buckets[item['bucketHash']] = item
+
+        user['saved_loadout'] = {'char_id': char_id,
+                                 'loadout': loadout_buckets}
+
+    async def _transfer_item(self, uid, ref_id, instance_id = None, char_id = None, to_vault = None):
+        user = await self._getinfo(uid)
+        data = json.dumps({"itemReferenceHash": ref_id,
+                           "itemId": instance_id,
+                           "characterId": char_id,
+                           "transferToVault": 1 if to_vault else 0,
+                           "membershipType": 3})
+        print(data)
+        async with self.ses.post(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/",
+                                headers={'X-Api-Key': self.bot.config['key'],
+                                         'Authorization': f"Bearer {user['token']}"},
+                                data=data) as req:
+            resp = await req.json()
+        print(resp)
+
+    async def _restore(self, ctx, clear_loadout=True):
+        user = await self._getinfo(ctx.author.id)
+        if 'saved_loadout' in self.easy_access[ctx.author.id] and self.easy_access[ctx.author.id]['saved_loadout']:
+            loadout = user['saved_loadout']
+            item_ids = [x['itemInstanceId'] for x in loadout['loadout']]
+            await self._equip_items(ctx.author.id, item_ids, loadout['char_id'])
+            if clear_loadout:
+                self.easy_access[ctx.author.id]['saved_loadout'].clear()
+                self.easy_access
+        else:
+            await ctx.reply("No saved loadout.")
+
+    @commands.command()
+    async def restore(self, ctx):
+        await self._restore(self, ctx)
+
+    async def _return_to_vault(self, uid, char_id):
+        user = self._getinfo(uid)
+        if 'last_loadout' in user and user['last_loadout']:
+            for bucket in user['last_loadout']:
+                item = user['last_loadout'][bucket]
+                await self._transfer_item(uid, item['itemHash'], item['itemInstanceId'],
+                                          char_id, to_vault=True)
+                await asyncio.sleep(0.3)
 
     @commands.command()
     async def randomize(self, ctx):
@@ -186,7 +239,13 @@ class Rumble:
 
         await self._get_member_data(ctx.author.id)
         char = await self._get_latest_char(ctx.author.id)
-        await self._make_space(ctx.author.id, char['characterId'])
+        if 'saved_loadout' not in user or not user['saved_loadout']:
+            await self._save_loadout(uid, char['characterId'])
+        if 'last_loadout' in user:
+            await self._restore(ctx, clear_loadout=False)
+            await self._return_to_vault(ctx.author.id, char['characterId'])
+        else:
+            await self._make_space(ctx.author.id, char['characterId'])
         each = {}
         buckets = {bucket: [] for bucket in self.buckets.keys()}
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
@@ -226,30 +285,17 @@ class Rumble:
                     if roll_item['inventory']['tierType'] != 6:
                         each[bucket] = roll
                         break
-
+        last_loadout = {}
         for bucket in each:
+            last_loadout[bucket] = each[bucket]
             await self._transfer_item(ctx.author.id, each[bucket]['itemHash'],
                                       each[bucket]['itemInstanceId'] if 'itemInstanceId' in each[bucket] else None,
                                       char['characterId'])
             await asyncio.sleep(0.3)
-
+        self.easy_access[ctx.author.id]['last_loadout'] = last_loadout
         await self._equip_items(ctx.author.id, [each[item]['itemInstanceId'] for item in each], char['characterId'])
 
 
-    async def _transfer_item(self, uid, ref_id, instance_id = None, char_id = None, to_vault = None):
-        user = await self._getinfo(uid)
-        data = json.dumps({"itemReferenceHash": ref_id,
-                           "itemId": instance_id,
-                           "characterId": char_id,
-                           "transferToVault": 1 if to_vault else 0,
-                           "membershipType": 3})
-        print(data)
-        async with self.ses.post(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/",
-                                headers={'X-Api-Key': self.bot.config['key'],
-                                         'Authorization': f"Bearer {user['token']}"},
-                                data=data) as req:
-            resp = await req.json()
-        print(resp)
 
 def setup(bot):
     bot.add_cog(Rumble(bot))
