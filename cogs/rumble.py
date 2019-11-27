@@ -13,7 +13,7 @@ class ItemType(enum.Enum):
     ARMOR = 2
     WEAPON = 3
 
-class Rumble:
+class Rumble(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.ses = bot.session
