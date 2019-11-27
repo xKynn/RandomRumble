@@ -125,7 +125,7 @@ class Rumble(commands.Cog):
         #print("Char")
         user = await self._getinfo(uid)
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
-                                f"Profile/{user['d2_mem_id']}?components=Characters",
+                                f"Profile/{user['d2_mem_id']}/?components=Characters",
                                 headers={'X-Api-Key': self.bot.config['key']}) as req:
             resp = await req.json()
         characters = []
@@ -146,9 +146,9 @@ class Rumble(commands.Cog):
         each = {}
         buckets = {k: 0 for k in self.buckets.keys()}
         print(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
-                               f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories")
+                               f"Profile/{user['d2_mem_id']}/Character/{char_id}/?components=CharacterInventories")
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
-                                f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories",
+                                f"Profile/{user['d2_mem_id']}/Character/{char_id}/?components=CharacterInventories",
                                 headers={'X-Api-Key': self.bot.config['key'],
                                          'Authorization': f"Bearer {user['token']}"}) as req:
             resp = await req.json()
@@ -192,7 +192,7 @@ class Rumble(commands.Cog):
     async def _save_loadout(self, uid, char_id):
         user = await self._getinfo(uid)
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
-                                f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterEquipment",
+                                f"Profile/{user['d2_mem_id']}/Character/{char_id}/?components=CharacterEquipment",
                                 headers={'X-Api-Key': self.bot.config['key'],
                                          'Authorization': f"Bearer {user['token']}"}) as req:
             resp = await req.json()
