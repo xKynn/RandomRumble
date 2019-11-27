@@ -11,7 +11,7 @@ class Help:
     @commands.group(invoke_without_command=True)
     async def help(self, ctx, *, command_name: str=None):
         """ Shows the possible help categories """
-        bot_prefix = '@Zana '
+        bot_prefix = '@Randy '
         # Shortcut to command search
         if command_name is not None:
             return await ctx.invoke(self.cmd('help command'), cmd_name=command_name)

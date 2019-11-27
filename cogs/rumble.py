@@ -3,7 +3,6 @@ import datetime
 import enum
 import json
 import sqlite3
-import pydest
 import random
 import time
 
@@ -35,8 +34,6 @@ class Rumble:
         #print(bucket_defs[0])
         for bucket_str in bucket_defs:
             bucket = json.loads(bucket_str[0])
-            if 'name' in bucket:
-                print(bucket['name'])
             if 'name' in bucket['displayProperties'] and bucket['displayProperties']['name'] in relevant_buckets:
                 self.buckets[bucket['hash']] = bucket['displayProperties']['name']
         print(self.buckets)
@@ -71,8 +68,8 @@ class Rumble:
                    'client_id': self.bot.config['client_id'],
                    'client_secret': self.bot.config['secret']}
         async with self.ses.post(self.token_url,
-                                 data = payload,
-                                 headers = self.refresh_headers) as req:
+                                 data=payload,
+                                 headers=self.refresh_headers) as req:
             resp = await req.json()
         #print(resp)
         with open('users.json', 'r') as file:
@@ -95,9 +92,10 @@ class Rumble:
         """ Pair your Discord with your Destiny 2 account. """
         em = Embed(title="Register here", color=self.bot.user_color,
                    url=f"http://127.0.0.1:5000/register?uid={ctx.author.id}")
-        await ctx.send(embed=em)
+        await ctx.author.send(embed=em)
+        await ctx.send("Check your DM for a registration link.")
 
-    @commands.command(alts=["test",])
+    @commands.command(alts=["test", ])
     async def usernametest(self, ctx):
         user = await self._getinfo(ctx.author.id)
         async with self.ses.get(f"https://www.bungie.net/Platform/User/GetBungieNetUserById/{user['member_id']}",
@@ -113,9 +111,15 @@ class Rumble:
                                 f"Profile/{user['member_id']}/LinkedProfiles",
                                 headers={'X-Api-Key': self.bot.config['key']}) as req:
             resp = await req.json()
-        if resp['Response']['profiles']:
-            user['d2_mem_id'] = resp['Response']['profiles'][0]['membershipId']
-            user['d2_mem_type'] = resp['Response']['profiles'][0]['membershipType']
+        print(resp)
+        try:
+            if resp['Response']['profiles']:
+                user['d2_mem_id'] = resp['Response']['profiles'][0]['membershipId']
+                user['d2_mem_type'] = resp['Response']['profiles'][0]['membershipType']
+                return True
+        except:
+            pass
+        return False
 
     async def _get_latest_char(self, uid):
         print("Char")
@@ -125,9 +129,9 @@ class Rumble:
                                 headers={'X-Api-Key': self.bot.config['key']}) as req:
             resp = await req.json()
         characters = []
-        for id in resp['Response']['characters']['data']:
-            characters.append((resp['Response']['characters']['data'][id],
-                               datetime.datetime.strptime(resp['Response']['characters']['data'][id]['dateLastPlayed'],
+        for _id in resp['Response']['characters']['data']:
+            characters.append((resp['Response']['characters']['data'][_id],
+                               datetime.datetime.strptime(resp['Response']['characters']['data'][_id]['dateLastPlayed'],
                                                           self.strp_format)))
         last_char = characters[0]
         for char in characters[1:]:
@@ -165,6 +169,13 @@ class Rumble:
                                       each[bucket]['itemInstanceId'] if 'itemInstanceId' in each[bucket] else None,
                                       char_id, to_vault=1)
             await asyncio.sleep(0.3)
+        if not 'space_items' in self.easy_access[uid]:
+            self.easy_access[uid]['space_items'] = {}
+        if not self.easy_access[uid]['space_items']:
+            self.easy_access[uid]['space_items']['char_id'] = char_id
+            self.easy_access[uid]['items'] = []
+
+        self.easy_access[uid]['space_items']['items'].extend([each[bucket] for bucket in need_space])
 
     async def _equip_items(self, uid, instance_ids, char_id):
         print("Equip")
@@ -183,12 +194,12 @@ class Rumble:
                                 f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterEquipment",
                                 headers={'X-Api-Key': self.bot.config['key']}) as req:
             resp = await req.json()
-        loadout = dict.fromkeys(self.buckets)
-        for item in resp['Response']['characterEquipment']['data']['items']:
+        loadout_buckets = dict.fromkeys(self.buckets)
+        for item in resp['Response']['equipment']['data']['items']:
             if item['bucketHash'] in loadout_buckets:
                 loadout_buckets[item['bucketHash']] = item
 
-        user['saved_loadout'] = {'char_id': char_id,
+        self.easy_access[str(uid)]['saved_loadout'] = {'char_id': char_id,
                                  'loadout': loadout_buckets}
 
     async def _transfer_item(self, uid, ref_id, instance_id = None, char_id = None, to_vault = None):
@@ -198,32 +209,62 @@ class Rumble:
                            "characterId": char_id,
                            "transferToVault": 1 if to_vault else 0,
                            "membershipType": 3})
-        print(data)
+        #print(data)
         async with self.ses.post(f"https://www.bungie.net/Platform/Destiny2/Actions/Items/TransferItem/",
                                 headers={'X-Api-Key': self.bot.config['key'],
                                          'Authorization': f"Bearer {user['token']}"},
                                 data=data) as req:
             resp = await req.json()
-        print(resp)
+        #print(resp)
 
     async def _restore(self, ctx, clear_loadout=True):
         user = await self._getinfo(ctx.author.id)
-        if 'saved_loadout' in self.easy_access[ctx.author.id] and self.easy_access[ctx.author.id]['saved_loadout']:
+        print(user)
+        if 'saved_loadout' in self.easy_access[str(ctx.author.id)] and self.easy_access[str(ctx.author.id)]['saved_loadout']:
             loadout = user['saved_loadout']
-            item_ids = [x['itemInstanceId'] for x in loadout['loadout']]
+            item_ids = [loadout['loadout'][x]['itemInstanceId'] for x in loadout['loadout']]
             await self._equip_items(ctx.author.id, item_ids, loadout['char_id'])
+            await self._return_to_vault(ctx.author.id, loadout['char_id'])
+            await self._return_to_char(ctx.author.id)
             if clear_loadout:
-                self.easy_access[ctx.author.id]['saved_loadout'].clear()
-                self.easy_access
+                try:
+                    self.easy_access[str(ctx.author.id)]['saved_loadout'].clear()
+                    self.easy_access[str(ctx.author.id)]['last_loadout'].clear()
+                    self.easy_access[str(ctx.author.id)]['space_items'].clear()
+                except (KeyError, AttributeError) as e:
+                    pass
         else:
             await ctx.reply("No saved loadout.")
 
     @commands.command()
+    async def clear(self, ctx):
+        user = await self._getinfo(ctx.author.id)
+        if not user:
+            return await ctx.reply("Please register first using the `register` commmand.")
+        try:
+            self.easy_access[str(ctx.author.id)]['saved_loadout'].clear()
+            self.easy_access[str(ctx.author.id)]['last_loadout'].clear()
+            self.easy_access[str(ctx.author.id)]['space_items'].clear()
+        except (KeyError, AttributeError) as e:
+            pass
+
+
+    @commands.command()
     async def restore(self, ctx):
-        await self._restore(self, ctx)
+        await self._restore(ctx)
+
+    async def _return_to_char(self, uid):
+        user = await self._getinfo(uid)
+        if 'space_items' in user:
+            items = user['space_items']['items']
+            char_id = user['space_items']['char_id']
+            for item in items:
+                await self._transfer_item(uid, item['itemHash'], item['itemInstanceId'],
+                                          char_id)
+                await asyncio.sleep(0.3)
 
     async def _return_to_vault(self, uid, char_id):
-        user = self._getinfo(uid)
+        user = await self._getinfo(uid)
         if 'last_loadout' in user and user['last_loadout']:
             for bucket in user['last_loadout']:
                 item = user['last_loadout'][bucket]
@@ -234,16 +275,17 @@ class Rumble:
     @commands.command()
     async def randomize(self, ctx):
         user = await self._getinfo(ctx.author.id)
-        if not user:
+        if user is False:
             return await ctx.reply("Please register first using the `register` commmand.")
 
-        await self._get_member_data(ctx.author.id)
+        mem = await self._get_member_data(ctx.author.id)
+        if not mem:
+            return await ctx.reply("No linked accounts found or D2 API is currently unintentionally underperforming.")
         char = await self._get_latest_char(ctx.author.id)
         if 'saved_loadout' not in user or not user['saved_loadout']:
-            await self._save_loadout(uid, char['characterId'])
+            await self._save_loadout(ctx.author.id, char['characterId'])
         if 'last_loadout' in user:
             await self._restore(ctx, clear_loadout=False)
-            await self._return_to_vault(ctx.author.id, char['characterId'])
         else:
             await self._make_space(ctx.author.id, char['characterId'])
         each = {}
@@ -262,7 +304,7 @@ class Rumble:
                 buckets[x['inventory']['bucketTypeHash']].append(item)
             except:
                 print(x['displayProperties']['name'])
-        print(buckets)
+
         for bucket in buckets:
             each[bucket] = random.choice(buckets[bucket])
         exotic_armor = False
@@ -286,13 +328,14 @@ class Rumble:
                         each[bucket] = roll
                         break
         last_loadout = {}
+        print(each)
         for bucket in each:
             last_loadout[bucket] = each[bucket]
             await self._transfer_item(ctx.author.id, each[bucket]['itemHash'],
                                       each[bucket]['itemInstanceId'] if 'itemInstanceId' in each[bucket] else None,
                                       char['characterId'])
             await asyncio.sleep(0.3)
-        self.easy_access[ctx.author.id]['last_loadout'] = last_loadout
+        self.easy_access[str(ctx.author.id)]['last_loadout'] = last_loadout
         await self._equip_items(ctx.author.id, [each[item]['itemInstanceId'] for item in each], char['characterId'])
 
 
