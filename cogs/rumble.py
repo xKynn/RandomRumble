@@ -145,14 +145,14 @@ class Rumble(commands.Cog):
         user = await self._getinfo(uid)
         each = {}
         buckets = {k: 0 for k in self.buckets.keys()}
-        #print(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
-         #                       f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories")
+        print(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
+                               f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories")
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
                                 f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterInventories",
                                 headers={'X-Api-Key': self.bot.config['key'],
                                          'Authorization': f"Bearer {user['token']}"}) as req:
             resp = await req.json()
-        ##print(type(list(self.buckets.keys())[0]))
+        print(resp)
         for item in resp['Response']['inventory']['data']['items']:
             ##print(type(item['bucketHash']))
             if item['bucketHash'] not in self.buckets:
