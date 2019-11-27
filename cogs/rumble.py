@@ -193,8 +193,8 @@ class Rumble(commands.Cog):
         user = await self._getinfo(uid)
         async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/"
                                 f"Profile/{user['d2_mem_id']}/Character/{char_id}?components=CharacterEquipment",
-                                headers={'X-Api-Key': self.bot.config['key',
-                                         'Authorization': f"Bearer {user['token']}"]}) as req:
+                                headers={'X-Api-Key': self.bot.config['key'],
+                                         'Authorization': f"Bearer {user['token']}"}) as req:
             resp = await req.json()
         loadout_buckets = dict.fromkeys(self.buckets)
         for item in resp['Response']['equipment']['data']['items']:
