@@ -56,4 +56,4 @@ def homepage():
     return """Authorized! You are registered on Randy and can safely close this window."""
 
 def run():
-    app.run()
+    app.run(host="0.0.0.0", ssl_context=('cert.pem', 'key.pem'))

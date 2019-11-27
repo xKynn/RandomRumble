@@ -91,7 +91,7 @@ class Rumble(commands.Cog):
     async def register(self, ctx):
         """ Pair your Discord with your Destiny 2 account. """
         em = Embed(title="Register here", color=self.bot.user_color,
-                   url=f"http://{self.bot.config['register_hostname']}/register?uid={ctx.author.id}")
+                   url=f"https://{self.bot.config['register_hostname']}/register?uid={ctx.author.id}")
         await ctx.author.send(embed=em)
         await ctx.send("Check your DM for a registration link.")
 
