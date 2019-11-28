@@ -248,6 +248,7 @@ class Rumble(commands.Cog):
     @commands.command()
     async def restore(self, ctx):
         await self._restore(ctx)
+        await ctx.reply("Done! :thumbsup:")
 
     @commands.command()
     async def clear(self, ctx):
@@ -260,6 +261,7 @@ class Rumble(commands.Cog):
             self.easy_access[str(ctx.author.id)]['space_items'].clear()
         except (KeyError, AttributeError) as e:
             pass
+        await ctx.reply("Cleared! You can now switch characters. :thumbsup:")
 
 
     async def _return_to_char(self, uid):
@@ -281,8 +283,24 @@ class Rumble(commands.Cog):
                                           char_id, to_vault=True)
                 await asyncio.sleep(0.3)
 
-    async def _get_item_and_perks(self, ref_id, instance_id):
-        pass
+    async def _get_item_and_perks(self, uid, ref_id, instance_id):
+        user = await self._getinfo(uid)
+        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/Profile"
+                                f"/{user['d2_mem_id']}/Item/{instance_id}/?components=ItemSockets",
+                                headers={'X-Api-Key': self.bot.config['key']}) as req:
+            resp = await req.json()
+
+        item_data = await self.bot.pyd.decode_hash(ref_id, 'DestinyInventoryItemDefinition')
+        item = {'name': item_data['displayProperties']['name'],
+                'traits': []}
+        for sock in resp['Response']['sockets']['data']['sockets']:
+            if sock['isVisible'] and 'plugHash' in sock:
+                trait_data = await self.bot.pyd.decode_hash(sock['plugHash'],
+                                                            'DestinyInventoryItemDefinition')
+                if trait_data['itemTypeDisplayName'] in ['Scope', 'Barrel', 'Magazine', 'Trait', 'Intrinsic']:
+                    item['traits'].append(trait_data['displayProperties']['name'])
+
+        return item
 
     @commands.command()
     async def randomize(self, ctx):
@@ -360,7 +378,6 @@ class Rumble(commands.Cog):
                         each[bucket] = roll
                         break
         last_loadout = {}
-        print(each)
         for bucket in each:
             if each[bucket]['location'] < 2:
                 continue
@@ -372,7 +389,16 @@ class Rumble(commands.Cog):
         self.easy_access[str(_id)]['last_loadout'] = last_loadout
         await self._equip_items(_id, [each[item]['itemInstanceId'] for item in each], char['characterId'])
 
+        em = Embed(title=f"🎲 New Loadout For {ctx.author.display_name}!",
+                   description="`@Randy restore` to restore your original inventory. "
+                               "\n`@Randy clear` before switching characters.")
+        em.set_thumbnail(url=f"https://bungie.net{char['emblemPath']}")
+        for bucket in each:
+            item_data = await self._get_item_and_perks(_id, each[bucket]['itemHash'], each[bucket]['itemInstanceId'])
+            em.add_field(name=item_data['name'], value=' |\n'.join(item_data['traits']) if item_data['traits']
+                                                                  else "N/A")
 
+        await ctx.send(embed=em)
 
 def setup(bot):
     bot.add_cog(Rumble(bot))
