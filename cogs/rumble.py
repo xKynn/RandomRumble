@@ -97,8 +97,11 @@ class Rumble(commands.Cog):
         """ Pair your Discord with your Destiny 2 account. """
         em = Embed(title="Register here", color=self.bot.user_color,
                    url=f"https://{self.bot.config['register_hostname']}/register?uid={ctx.author.id}")
-        await ctx.author.send(embed=em)
-        await ctx.send("Check your DM for a registration link.")
+        try:
+            await ctx.author.send(embed=em)
+            await ctx.send("Check your DM for a registration link.")
+        except:
+            await ctx.error("Please enable DMs from server members to receive the registration link.")
 
     @commands.command()
     async def map(self, ctx):
