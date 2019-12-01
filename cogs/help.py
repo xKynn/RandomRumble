@@ -17,7 +17,13 @@ class Help(commands.Cog):
             return await ctx.invoke(self.cmd('help command'), cmd_name=command_name)
 
         em = discord.Embed(title='Help',
-                           description='hi :)',
+                           description='**Permissions:** The permissions required to function :-\n'
+                                       '`Send Messages`, `Manage Messages`, `Embed Links`\n'
+                                       '--\nTo get help or more information on a specific command, use:\n'
+                                       '`{bot_prefix}help <command name>`\n'
+                                       '--\nRead my messy code [here](http://github.com/xKynn/RandomRumble)'
+                                       '--\nIf you like my work and would like to help me, '
+                                       'Ko-Fi/Paypal: [Link](https://ko-fi.com/D1D6EXXV)\n',
                            color=self.color)
 
         em.set_footer(text="Contact me at Demo#7645")
@@ -40,8 +46,7 @@ class Help(commands.Cog):
         # Handle no command found
         if cmd_obj is None:
             return await ctx.error(f'Command {cmd_name} not found')
-
-        em = discord.Embed(title=cmd_obj.name, description=cmd_obj.short_doc, color=self.color)
+        em = discord.Embed(title=cmd_obj.name, description=cmd_obj.help, color=self.color)
 
         # Input aliases and parameters to embed
         if cmd_obj.aliases:

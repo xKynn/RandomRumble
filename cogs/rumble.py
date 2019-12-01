@@ -102,12 +102,14 @@ class Rumble(commands.Cog):
 
     @commands.command()
     async def map(self, ctx):
+        """ Pick a random crucible map. """
         m = random.choice(self.maps)
         em = Embed(title="🗺️ Map", description=f"{m[0]}, Page {m[1]}")
         await ctx.send(embed=em)
 
     @commands.command(alts=["test", ])
     async def usernametest(self, ctx):
+        """ A simple test command to check if registration worked. """
         user = await self._getinfo(ctx.author.id)
         async with self.ses.get(f"https://www.bungie.net/Platform/User/GetBungieNetUserById/{user['member_id']}",
                                 headers={'X-Api-Key': self.bot.config['key']}) as req:
@@ -258,11 +260,16 @@ class Rumble(commands.Cog):
 
     @commands.command()
     async def restore(self, ctx):
+        """ Restore character inventory and state to one before your first randomize. """
         await self._restore(ctx)
         await ctx.reply("Done! :thumbsup:")
 
     @commands.command()
     async def clear(self, ctx):
+        """
+        Clear all stored character specific info on Randy.
+        This allows you to switch character while maintaining inventory management.
+        """
         user = await self._getinfo(ctx.author.id)
         if not user:
             return await ctx.reply("Please register first using the `register` commmand.")
@@ -324,6 +331,10 @@ class Rumble(commands.Cog):
 
     @commands.command()
     async def randomize(self, ctx):
+        """
+        Randomize items on your last logged in character.
+        Randy will smartly return any pulled items from vault on subsequent randomize commands.
+        """
         _id = ctx.author.id
         user = await self._getinfo(_id)
         if user is False:
