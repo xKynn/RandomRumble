@@ -29,14 +29,19 @@ class Rumble(commands.Cog):
         res = c.execute("SELECT json from DestinyInventoryBucketDefinition")
         bucket_defs = res.fetchall()
         relevant_buckets = ['Kinetic Weapons', 'Energy Weapons', 'Power Weapons', 'Helmet', 'Gauntlets',
-                            'Chest Armor', 'Leg Armor', 'Class Armor']
+                            'Chest Armor', 'Leg Armor', 'Class Armor', 'Subclass']
         self.buckets = {}
         #print(bucket_defs[0])
         for bucket_str in bucket_defs:
             bucket = json.loads(bucket_str[0])
             if 'name' in bucket['displayProperties'] and bucket['displayProperties']['name'] in relevant_buckets:
                 self.buckets[bucket['hash']] = bucket['displayProperties']['name']
-        #print(self.buckets)
+        self.maps = [("Altar of Flame", 1), ("Bannerfall", 1), ("The Burnout", 1), ("The Citadel", 1),
+                     ("Convergence", 1), ("The Dead Cliffs", 1), ("Distant Shore", 2), ("Emperor's Respite", 2),
+                     ("Endless Vale", 2), ("Equinox", 2), ("Eternity", 2), ("Firebase Echo", 2), ("The Fortress", 3),
+                     ("Fragment", 3), ("Gambler's Ruin", 3), ("Javelin-4", 3), ("Legion's Gulch", 3),
+                     ("Meltdown", 3), ("Midtown", 4), ("Pacifica", 4), ("Radiant Cliffs", 4), ("Retribution", 4),
+                     ("Solitude", 4), ("Twilight Gap", 4), ("Vostok", 5), ("Widow's Court", 5), ("Wormhaven", 5)]
 
 
     async def _getinfo(self, id):
@@ -94,6 +99,12 @@ class Rumble(commands.Cog):
                    url=f"https://{self.bot.config['register_hostname']}/register?uid={ctx.author.id}")
         await ctx.author.send(embed=em)
         await ctx.send("Check your DM for a registration link.")
+
+    @commands.command()
+    async def map(self, ctx):
+        m = random.choice(self.maps)
+        em = Embed(title="🗺️ Map", description=f"{m[0]}, Page {m[1]}")
+        await ctx.send(embed=em)
 
     @commands.command(alts=["test", ])
     async def usernametest(self, ctx):
@@ -285,20 +296,29 @@ class Rumble(commands.Cog):
 
     async def _get_item_and_perks(self, uid, ref_id, instance_id):
         user = await self._getinfo(uid)
-        async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/Profile"
-                                f"/{user['d2_mem_id']}/Item/{instance_id}/?components=ItemSockets",
-                                headers={'X-Api-Key': self.bot.config['key']}) as req:
-            resp = await req.json()
-
         item_data = await self.bot.pyd.decode_hash(ref_id, 'DestinyInventoryItemDefinition')
-        item = {'name': item_data['displayProperties']['name'],
-                'traits': []}
-        for sock in resp['Response']['sockets']['data']['sockets']:
-            if sock['isVisible'] and 'plugHash' in sock:
-                trait_data = await self.bot.pyd.decode_hash(sock['plugHash'],
-                                                            'DestinyInventoryItemDefinition')
-                if trait_data['itemTypeDisplayName'] in ['Scope', 'Barrel', 'Magazine', 'Trait', 'Intrinsic']:
-                    item['traits'].append(trait_data['displayProperties']['name'])
+        item = {'name': f"Subclass: {item_data['displayProperties']['name']}"
+                        if self.buckets[item_data['inventory']['bucketTypeHash']] == "Sublcass"
+                        else item_data['displayProperties']['name'],
+                'traits': [],
+                'subclass': True if self.buckets[item_data['inventory']['bucketTypeHash']] == 'Subclass' else False}
+        if not item['subclass']:
+            async with self.ses.get(f"https://www.bungie.net/Platform/Destiny2/{user['d2_mem_type']}/Profile"
+                                    f"/{user['d2_mem_id']}/Item/{instance_id}/?components=ItemSockets",
+                                    headers={'X-Api-Key': self.bot.config['key']}) as req:
+                resp = await req.json()
+
+            for sock in resp['Response']['sockets']['data']['sockets']:
+                if sock['isVisible'] and 'plugHash' in sock:
+                    trait_data = await self.bot.pyd.decode_hash(sock['plugHash'],
+                                                                'DestinyInventoryItemDefinition')
+                    if trait_data['itemTypeDisplayName'] in ['Scope', 'Barrel', 'Magazine', 'Trait', 'Intrinsic']:
+                        item['traits'].append(trait_data['displayProperties']['name'])
+        else:
+            item['traits'].append(f"*Tree*: {random.choice(['Top', 'Middle', 'Bottom'])}")
+            item['traits'].append(f"*Grenade*: {random.choice(['Left', 'Middle', 'Right'])}")
+            item['traits'].append(f"*Class Ability*: {random.choice(['Top', 'Bottom'])}")
+            item['traits'].append(f"*Jump*: {random.choice(['Left', 'Middle', 'Right'])}")
 
         return item
 
@@ -351,6 +371,10 @@ class Rumble(commands.Cog):
                 print(x['displayProperties']['name'])
                 pass
         print(buckets.keys())
+        if self.easy_access[str(ctx.author.id)]['saved_loadout']:
+            for bucket in self.easy_access[str(ctx.author.id)]['saved_loadout']['loadout']:
+                buckets[bucket].append(
+                    self.easy_access[str(ctx.author.id)]['saved_loadout']['loadout'][bucket])
         for bucket in buckets:
             if len(buckets[bucket]) < 2:
                 continue
@@ -395,7 +419,8 @@ class Rumble(commands.Cog):
         em.set_thumbnail(url=f"https://bungie.net{char['emblemPath']}")
         for bucket in each:
             item_data = await self._get_item_and_perks(_id, each[bucket]['itemHash'], each[bucket]['itemInstanceId'])
-            em.add_field(name=item_data['name'], value=' |\n'.join(item_data['traits']) if item_data['traits']
+            #print(item_data)
+            em.add_field(name=item_data['name'], value=' **|**\n'.join(item_data['traits']) if item_data['traits']
                                                                   else "N/A")
 
         await ctx.send(embed=em)
