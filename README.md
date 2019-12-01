@@ -20,10 +20,11 @@ Commands:
    - This allows you to switch character while maintaining inventory management.
 
 Want to host your own instance?
-1. Make your ouath enabled app for bungie [here](https://www.bungie.net/en/Application).
-2. Make your discord app and add a bot account for it [here](https://discordapp.com/developers/applications/).
-3. Change arguments for `run` in `app.py`. If you want https redirect to work from Bungie you will need a domain and cert.
-4. `config.json`
+1. Clone and satisfy requirements.
+2. Make your ouath enabled app for bungie [here](https://www.bungie.net/en/Application).
+3. Make your discord app and add a bot account for it [here](https://discordapp.com/developers/applications/).
+4. Change arguments for `run` in `app.py`. If you want https redirect to work from Bungie you will need a domain and cert.
+5. `config.json`
    - token : discord bot token
    - secret : bungie client secret
    - key : bungie api key
