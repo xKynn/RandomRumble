@@ -3,7 +3,7 @@ A Random Rumble discord bot for destiny 2.
 Mini Flask webapp as interface to pair up discord info with bungie auth code.
 
 How to use:
-1. Invite to discord.
+1. [Invite to discord](https://discordapp.com/api/oauth2/authorize?client_id=644787087064825856&permissions=18432&scope=bot).
 2. `@Randy register`
 3. `@Randy randomize`
 4. `@Randy map` if you want.
