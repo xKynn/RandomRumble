@@ -189,7 +189,7 @@ class Rumble(commands.Cog):
             await self._transfer_item(uid, each[bucket]['itemHash'],
                                       each[bucket]['itemInstanceId'] if 'itemInstanceId' in each[bucket] else None,
                                       char_id, to_vault=1)
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.2)
         if not 'space_items' in self.easy_access[str(uid)]:
             self.easy_access[str(uid)]['space_items'] = {}
         if not self.easy_access[str(uid)]['space_items']:
@@ -264,7 +264,7 @@ class Rumble(commands.Cog):
     @commands.command()
     async def restore(self, ctx):
         """ Restore character inventory and state to one before your first randomize. """
-        await self.bot.trigger_typing()
+        await ctx.trigger_typing()
         await self._restore(ctx)
         await ctx.reply("Done! :thumbsup:")
 
@@ -274,7 +274,7 @@ class Rumble(commands.Cog):
         Clear all stored character specific info on Randy.
         This allows you to switch character while maintaining inventory management.
         """
-        await self.bot.trigger_typing()
+        await ctx.trigger_typing()
         user = await self._getinfo(ctx.author.id)
         if not user:
             return await ctx.reply("Please register first using the `register` commmand.")
@@ -295,7 +295,7 @@ class Rumble(commands.Cog):
             for item in items:
                 await self._transfer_item(uid, item['itemHash'], item['itemInstanceId'],
                                           char_id)
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.2)
 
     async def _return_to_vault(self, uid, char_id):
         user = await self._getinfo(uid)
@@ -304,7 +304,7 @@ class Rumble(commands.Cog):
                 item = user['last_loadout'][bucket]
                 await self._transfer_item(uid, item['itemHash'], item['itemInstanceId'],
                                           char_id, to_vault=True)
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.2)
 
     async def _get_item_and_perks(self, uid, ref_id, instance_id):
         user = await self._getinfo(uid)
@@ -340,7 +340,7 @@ class Rumble(commands.Cog):
         Randomize items on your last logged in character.
         Randy will smartly return any pulled items from vault on subsequent randomize commands.
         """
-        await self.bot.trigger_typing()
+        await ctx.trigger_typing()
         _id = ctx.author.id
         user = await self._getinfo(_id)
         if user is False:
@@ -426,7 +426,7 @@ class Rumble(commands.Cog):
             await self._transfer_item(_id, each[bucket]['itemHash'],
                                       each[bucket]['itemInstanceId'] if 'itemInstanceId' in each[bucket] else None,
                                       char['characterId'])
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.2)
         self.easy_access[str(_id)]['last_loadout'] = last_loadout
         await self._equip_items(_id, [each[item]['itemInstanceId'] for item in each], char['characterId'])
 
