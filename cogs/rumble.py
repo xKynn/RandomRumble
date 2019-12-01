@@ -264,6 +264,7 @@ class Rumble(commands.Cog):
     @commands.command()
     async def restore(self, ctx):
         """ Restore character inventory and state to one before your first randomize. """
+        await self.bot.trigger_typing()
         await self._restore(ctx)
         await ctx.reply("Done! :thumbsup:")
 
@@ -273,6 +274,7 @@ class Rumble(commands.Cog):
         Clear all stored character specific info on Randy.
         This allows you to switch character while maintaining inventory management.
         """
+        await self.bot.trigger_typing()
         user = await self._getinfo(ctx.author.id)
         if not user:
             return await ctx.reply("Please register first using the `register` commmand.")
@@ -338,6 +340,7 @@ class Rumble(commands.Cog):
         Randomize items on your last logged in character.
         Randy will smartly return any pulled items from vault on subsequent randomize commands.
         """
+        await self.bot.trigger_typing()
         _id = ctx.author.id
         user = await self._getinfo(_id)
         if user is False:
