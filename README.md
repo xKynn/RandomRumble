@@ -1,18 +1,21 @@
 # Randy the Random Rumble Robot
 A Random Rumble discord bot for destiny 2.
-Mini Flask webapp as interface to pair up discord info with bungie auth code and avoid CORS forgery.
+Mini Flask webapp as interface to pair up discord info with bungie auth code.
 
-Planned Features:
-1. Randomize loadout
-2. Pick subclass and send as a message on discord
-3. Outputs chosen items and rolls in discord
-4. Command / auto put back removed items if space allows
-5. Special modes / weapon chocies
+How to use:
+1. Invite to discord.
+2. `@Randy register`
+3. `@Randy randomize`
+4. `@Randy map` if you want.
+5. `@Randy restore`
 
-ToDo:
-1. Make client id not hardcoded
-2. Neater implementations
-3. Possible actual db over json
-4. Add actual commands
-5. Figure out SSL for server
+Commands:
+1. `randomize`
+ * Randomize items on your last logged in character.
+   Randy will smartly return any pulled items from vault on subsequent randomize commands.
+2. `restore`
+ * Restore character inventory and state to one before your first randomize.
+3. `clear`
+ * Clear all stored character specific info on Randy.
+   This allows you to switch character while maintaining inventory management.
 
